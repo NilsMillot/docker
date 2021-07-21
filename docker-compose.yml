@@ -8,14 +8,14 @@ services:
       - projet-docker
     depends_on:
       - mongo
-  react-app-cine:
+  FRONT-react-app-cine:
     image: react-app
     stdin_open: true
     ports:
       - "3001:3000"
     networks:
       - projet-docker
-  mongo:
+  BDD-mongo:
     image: mongo:3.6.19-xenial
     ports:
       - "27017:27017"
@@ -23,31 +23,35 @@ services:
       - projet-docker
     volumes:
       - mongo-data:/data/db
-  mailserver:
-    image: docker.io/mailserver/docker-mailserver:latest
-    hostname: mail
-    domainname: domain.com
-    container_name: mailserver
-    env_file: mailserver.env
-    # To avoid conflicts with yaml base-60 float, DO NOT remove the quotation marks.
-    # More information about the mailserver ports:
-    # https://docker-mailserver.github.io/docker-mailserver/edge/config/security/understanding-the-ports/
-    ports:
-      - "25:25" # SMTP  (explicit TLS => STARTTLS)
-      - "143:143" # IMAP4 (explicit TLS => STARTTLS)
-      - "465:465" # ESMTP (implicit TLS)
-      - "587:587" # ESMTP (explicit TLS => STARTTLS)
-      - "993:993" # IMAP4 (implicit TLS)
-    volumes:
-      - ./data/maildata:/var/mail
-      - ./data/mailstate:/var/mail-state
-      - ./data/maillogs:/var/log/mail
-      - /etc/localtime:/etc/localtime:ro
-      - ./config/:/tmp/docker-mailserver/
+  BDD-Admin_phpmyadmin:
+    image: phpmyadmin
     restart: always
-    stop_grace_period: 1m
-    cap_add: ["NET_ADMIN", "SYS_PTRACE"]
-
+    ports:
+      - 8080:80
+    environment:
+      - PMA_ARBITRARY=1
+  MAILING:
+    image: mailhog/mailhog
+    logging:
+      driver: "none" # disable saving logs
+    ports:
+      - 1025:1025 # for server
+      - 8025:8025 # for web ui
+  REDIS:
+    image: "redis:6.2.4-alpine3.14"
+    ports:
+      - "6379:6379"
+    volumes:
+      - $PWD/redis-data:/var/lib/redis
+      - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - projet-docker
+  ELK:
+    image: sebp/elk
+    ports:
+      - "5601:5601"
+      - "9200:9200"
+      - "5044:5044"
 networks:
   projet-docker:
     driver: bridge
